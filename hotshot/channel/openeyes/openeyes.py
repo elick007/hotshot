@@ -3,7 +3,7 @@ import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "MyProject.settings")
 django.setup()
-from hotshot.models import DailyVideo, HotVideo
+from hotshot.models import OpenEyesDailyVideo, OpenEyesHotVideo
 import json
 from hotshot.channel.openeyes import config
 from hotshot.utils.fetch import fetch
@@ -39,7 +39,7 @@ class OpenEyes:
         #responseJson = json.loads(response)
         responseJson=response
         itemList = responseJson['itemList']
-        for item in itemList:
+        for item in reversed(itemList):
             if item['type'] == 'video':
                 data = item['data']
                 cover = data['cover']
@@ -52,14 +52,15 @@ class OpenEyes:
 
     def insert_video(self, data=None, type='daily'):
         if type == 'daily':
-            DailyVideo.objects.create(title=data['title'], description=data['description'], cover=data['detail'],
-                                      playUrl=data['playUrl'])
+            OpenEyesDailyVideo.objects.create(title=data['title'], description=data['description'], cover=data['detail'],
+                                              playUrl=data['playUrl'])
         elif type == 'hot':
-            HotVideo.objects.create(title=data['title'], description=data['description'], cover=data['detail'],
-                                    playUrl=data['playUrl'])
+            #HotVideo.objects.update_or_create(playUrl=data['playUrl'])
+            OpenEyesHotVideo.objects.update_or_create(title=data['title'], description=data['description'], cover=data['detail'],
+                                                      playUrl=data['playUrl'])
 
     def deleteVideo(self):
-        DailyVideo.objects.filter().delete()
+        OpenEyesDailyVideo.objects.filter().delete()
 
 
 if __name__ == '__main__':

@@ -19,7 +19,7 @@ class LiShiPin:
                 if nodeType == '1' or nodeType == '6':
                     contList = data.get('contList')
                     if contList != None:
-                        for cont in contList:
+                        for cont in reversed(contList):
                             contId = cont['contId']
                             self.get_more_from_id(contId)
 
@@ -41,7 +41,7 @@ class LiShiPin:
 
     def inser_video_data(self, data, type='hot'):
         if type == 'hot':
-            LSPHotVideoModel.objects.create(title=data['title'], description=data['des'],
+            LSPHotVideoModel.objects.update_or_create(title=data['title'], description=data['des'],
                                             cover=data['cover'], playUrl=data['playUrl'])
 
 

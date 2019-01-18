@@ -17,7 +17,7 @@ class Douyin:
         if status_code == 0:
             data = response_json['data']
             aweme_list = data['aweme_list']
-            for aweme in aweme_list:
+            for aweme in reversed(aweme_list):
                 aweme_info = aweme['aweme_info']
                 status = aweme_info['status']
                 is_delete = status['is_delete']
@@ -40,7 +40,7 @@ class Douyin:
 
     def insert_video(self, data=None, type='hot'):
         if type == 'hot':
-            DYHotVideoModel.objects.create(author=data['author'], view=data['view'], description=data['description'],
+            DYHotVideoModel.objects.update_or_create(author=data['author'], view=data['view'], description=data['description'],
                                            cover=data['cover'], playUrl=data['playUrl'])
 
     def get_positive_video(self):

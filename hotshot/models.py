@@ -33,36 +33,12 @@ class Snippet(models.Model):
         ordering = ('created',)
 
 
-class DailyVideo(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
-    id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=100, blank=True, default='')
-    description = models.TextField(blank=True, default='')
-    cover = models.TextField(default='')
-    playUrl = models.TextField(default='')
-
-    class Meta:
-        ordering = ('created',)
-
-
-class HotVideo(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
-    id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=100, blank=True, default='')
-    description = models.TextField(blank=True, default='')
-    cover = models.TextField(default='')
-    playUrl = models.TextField(default='')
-
-    class Meta:
-        ordering = ('created',)
-
-
 class HotShotUser(models.Model):
-    username = models.OneToOneField(User, on_delete=models.CASCADE)
+    # username = models.OneToOneField(User, on_delete=models.CASCADE)
+    username = models.CharField(max_length=8, default='', unique=True)
     password = models.CharField(max_length=13)
     created = models.DateTimeField(auto_now_add=True)
-    uid = models.PositiveIntegerField(primary_key=True, unique=True, auto_created=True, default='')
-    token = models.CharField(max_length=64, default='', auto_created=True, unique=True)
+    uid = models.CharField(primary_key=True, unique=True, default='', max_length=13)
 
     class Meta:
         pass
@@ -79,8 +55,32 @@ class UserFavorite(models.Model):
         ordering = ('created',)
 
 
+class OpenEyesDailyVideo(models.Model):
+    created = models.DateTimeField(auto_now=True)
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    cover = models.TextField(default='')
+    playUrl = models.TextField(default='')
+
+    class Meta:
+        ordering = ('created',)
+
+
+class OpenEyesHotVideo(models.Model):
+    created = models.DateTimeField(auto_now=True)
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    cover = models.TextField(default='')
+    playUrl = models.TextField(default='')
+
+    class Meta:
+        ordering = ('created',)
+
+
 class DYHotVideoModel(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
+    created = models.DateTimeField(auto_now=True)
     id = models.AutoField(primary_key=True)
     author = models.CharField(max_length=100, default='')
     view = models.CharField(max_length=100, default='')
@@ -93,7 +93,7 @@ class DYHotVideoModel(models.Model):
 
 
 class LSPHotVideoModel(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
+    created = models.DateTimeField(auto_now=True)
     id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=100, blank=True, default='')
     description = models.TextField(blank=True, default='')

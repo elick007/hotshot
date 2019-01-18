@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import User
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
@@ -10,10 +12,12 @@ from rest_framework.response import Response
 from rest_framework import permissions
 from rest_framework import viewsets
 from rest_framework.views import APIView
+from rest_framework import mixins
 
-from hotshot.models import Snippet, DailyVideo, HotVideo, UserFavorite, DYHotVideoModel, LSPHotVideoModel
+from hotshot.base.restbase import CustomViewBase, CustomResponse, CustomReadOnlyViewSet
+from hotshot.models import Snippet, OpenEyesDailyVideo, OpenEyesHotVideo, UserFavorite, DYHotVideoModel, LSPHotVideoModel, HotShotUser
 from hotshot.permissions import IsOwnerOrReadOnly
-from hotshot.serializers import SnippetSerializer, UserSerializer, DailyVideoSerializer, HotVideoSerializer, \
+from hotshot.serializers import SnippetSerializer, UserSerializer, OpenEyesDailyVideoSerializer, OpenEyesHotVideoSerializer, \
     UserFavoriteSerializer, DYHotVideoSerializer, LSPHotVideoSerializer
 from rest_framework.parsers import JSONParser
 from rest_framework import generics
@@ -30,6 +34,16 @@ def snippet_list(request):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def user_ac(request):
+    if request.method == 'POST':
+        uid = uuid.uuid1().int >> 90
+        serializer = UserSerializer(data=request.data, uid=uid)
+        if serializer.is_valid():
+            return Response(data='diaomao', status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -85,13 +99,33 @@ class UserDetail(generics.RetrieveAPIView):
     serializer_class = UserSerializer
 
 
-class UserRegister(APIView):
+class UserViews(APIView):
+
     def post(self, request, format=None):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        ac = self.request.GET.get('ac')
+        username_post = request.data['username']
+        password_post = request.data['password']
+        if ac == 'login':
+            login_dict = HotShotUser.objects.filter(username=username_post, password=password_post)
+            if login_dict.exists():
+                data = {'uid': '%s' % login_dict[0].uid}
+                return CustomResponse(code=1, msg='login success', data=data, status=status.HTTP_200_OK)
+            return CustomResponse(code=0, msg='username or password error', status=status.HTTP_200_OK)
+        if ac == 'register':
+            register_dict = HotShotUser.objects.filter(username=username_post)
+            if register_dict.exists():
+                return CustomResponse(code=0, msg='username exist', status=status.HTTP_200_OK)
+            else:
+                uid = uuid.uuid1().int >> 90
+                serializer = UserSerializer(data=request.data)
+                if serializer.is_valid():
+                    serializer.save(uid=str(uid))
+                    return CustomResponse(code=1, msg='register success', data='', status=status.HTTP_200_OK)
+                return CustomResponse(code=0, msg='system error', data='')
+        return CustomResponse(code=0, msg='key ac not right', data='')
+
+    def get(self, request, format=None):
+        return Response(None, status=status.HTTP_400_BAD_REQUEST)
 
 
 class SnippetViewSet(viewsets.ModelViewSet):
@@ -110,28 +144,35 @@ class UserFavoriteView(generics.ListCreateAPIView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = HotShotUser.objects.all()
     serializer_class = UserSerializer
 
-    def list(self, request, *args, **kwargs):
-        return Response(data='', status=status.HTTP_400_BAD_REQUEST)
-    
+    # def list(self, request, *args, **kwargs):
+    #     return Response(data=None, status=status.HTTP_400_BAD_REQUEST)
 
-class DailyVideoViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = DailyVideo.objects.all()
-    serializer_class = DailyVideoSerializer
-
-
-class HotVideoViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = HotVideo.objects.all()
-    serializer_class = HotVideoSerializer
+    def perform_create(self, serializer):
+        uid = uuid.uuid1().int >> 90
+        if serializer.is_valid():
+            serializer.save(uid=str(uid))
 
 
-class DYHotVideoViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = DYHotVideoModel.objects.all()
+class DailyVideoViewSet(CustomReadOnlyViewSet):
+    queryset = OpenEyesDailyVideo.objects.all().order_by('-created')
+    serializer_class = OpenEyesDailyVideoSerializer
+
+
+class HotVideoViewSet(CustomReadOnlyViewSet):
+    queryset = OpenEyesHotVideo.objects.all().order_by('-created')
+    serializer_class = OpenEyesHotVideoSerializer
+    # def list(self, request, *args, **kwargs):
+    #     return CustomResponse(code=1,data=[],msg='lalala')
+
+
+class DYHotVideoViewSet(CustomReadOnlyViewSet):
+    queryset = DYHotVideoModel.objects.all().order_by('-created')
     serializer_class = DYHotVideoSerializer
 
 
-class LSPHotVideoViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = LSPHotVideoModel.objects.all()
+class LSPHotVideoViewSet(CustomReadOnlyViewSet):
+    queryset = LSPHotVideoModel.objects.all().order_by('-created')
     serializer_class = LSPHotVideoSerializer

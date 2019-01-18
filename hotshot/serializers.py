@@ -1,8 +1,11 @@
+import uuid
+
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from hotshot.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES, DailyVideo, HotVideo, HotShotUser, UserFavorite, \
+from hotshot.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES, OpenEyesDailyVideo, OpenEyesHotVideo, HotShotUser, \
+    UserFavorite, \
     DYHotVideoModel
 
 
@@ -26,23 +29,22 @@ class UserSerializer(serializers.ModelSerializer):
     # snippet = serializers.PrimaryKeyRelatedField(many=True, queryset=Snippet.objects.all())
 
     class Meta:
-        model = User
-        fields = ('username', 'password',)
+        model = HotShotUser
+        fields = ('username', 'password', 'uid')
+
+    def create(self, validated_data):
+        return super().create(validated_data)
 
 
-class DailyVideoSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField
-
+class OpenEyesDailyVideoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = DailyVideo
+        model = OpenEyesDailyVideo
         fields = ('id', 'created', 'title', 'description', 'cover', 'playUrl')
 
 
-class HotVideoSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField
-
+class OpenEyesHotVideoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = HotVideo
+        model = OpenEyesHotVideo
         fields = ('id', 'created', 'title', 'description', 'cover', 'playUrl')
 
 
@@ -54,5 +56,5 @@ class DYHotVideoSerializer(serializers.ModelSerializer):
 
 class LSPHotVideoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = HotVideo
+        model = OpenEyesHotVideo
         fields = ('id', 'created', 'title', 'description', 'cover', 'playUrl')
