@@ -18,18 +18,20 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from hotshot import views
 
-router = DefaultRouter()
-router.register(r'snippets', views.SnippetViewSet)
-router.register(r'api/user', views.UserViewSet)
-router.register(r'api/videos/daily', views.DailyVideoViewSet)
-router.register(r'api/videos/hot', views.HotVideoViewSet)
-router.register(r'api/videos/douyin/hot', views.DYHotVideoViewSet)
-router.register(r'api/videos/lsp/hot', views.LSPHotVideoViewSet)
+# router = DefaultRouter()
+# router.register(r'snippets', views.SnippetViewSet)
+# #router.register(r'api/user', views.UserViewSet)
+# router.register(r'daily video', views.DailyVideoViewSet)
+# router.register(r'hot video', views.HotVideoViewSet)
+# router.register(r'douyin hot video', views.DYHotVideoViewSet)
+# router.register(r'lsp hot video', views.LSPHotVideoViewSet)
 # router.register(r'api/user/favorite', views.UserFavoriteViewSet)
 # router.register(r'api/user/register', views.UserRegister)
+from hotshot.urls import router, urlpatterns_hotshot
+
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include(router.urls)),
+    path('', include(urlpatterns_hotshot)),
 ]
 urlpatterns += [
     path('api-auth/', include('rest_framework.urls')),
