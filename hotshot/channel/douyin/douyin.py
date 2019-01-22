@@ -1,5 +1,6 @@
 import os
 import django
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "MyProject.settings")
 django.setup()
 from hotshot.models import DYHotVideoModel
@@ -40,8 +41,10 @@ class Douyin:
 
     def insert_video(self, data=None, type='hot'):
         if type == 'hot':
-            DYHotVideoModel.objects.update_or_create(author=data['author'], view=data['view'], description=data['description'],
-                                           cover=data['cover'], playUrl=data['playUrl'])
+            DYHotVideoModel.objects.update_or_create(playUrl=data['playUrl'],
+                                                     defaults={'author': data['author'], 'view': data['view'],
+                                                               'description': data['description'],
+                                                               'cover': data['cover']})
 
     def get_positive_video(self):
         response = fetch(douyin_positive_video_url, headers=header)

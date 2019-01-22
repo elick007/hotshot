@@ -10,11 +10,12 @@ from rest_framework.views import APIView
 from rest_framework import mixins
 from hotshot.base.restbase import CustomViewBase, CustomResponse, CustomReadOnlyViewSet
 from hotshot.models import Snippet, OpenEyesDailyVideo, OpenEyesHotVideo, DYHotVideoModel, \
-    LSPHotVideoModel, HotShotUser, SMSModel, UserFavoriteOEModel
+    LSPHotVideoModel, HotShotUser, SMSModel, UserFavoriteOEModel, UserFavoriteDYModel, UserFavoriteLSPModel
 from hotshot.permissions import IsOwnerOrReadOnly
 from hotshot.serializers import SnippetSerializer, UserSerializer, OpenEyesDailyVideoSerializer, \
     OpenEyesHotVideoSerializer, \
-    UserFavoriteOESerializer, DYHotVideoSerializer, LSPHotVideoSerializer, SMSSerializer
+    UserFavoriteOESerializer, DYHotVideoSerializer, LSPHotVideoSerializer, SMSSerializer, UserFavoriteOEListSerializer, \
+    UserFavoriteDYSerializer, UserFavoriteDYListSerializer, UserFavoriteLSPSerializer, UserFavoriteLSPListSerializer
 from rest_framework import generics
 
 from hotshot.utils.aesutil import decrypt_oralce
@@ -102,19 +103,23 @@ class UserViews(APIView):
 
     def post(self, request, format=None):
         ac = self.request.GET.get('ac')
-        username_post = request.data['username']
-        password_post = decrypt_oralce(request.data['password'])
+        username_post = request.data.get('username', '')
+        # password_post = decrypt_oralce(request.data['password'])
+        password_post = request.data.get('password', '')
+        verify_code = request.data.get('verifyCode', '')
+        phone = request.data.get('phone', '')
         if ac == 'login':
-            login_dict = HotShotUser.objects.filter(username=username_post, password=password_post)
+            if username_post == '':
+                login_dict = HotShotUser.objects.filter(phone=phone, password=password_post)
+            else:
+                login_dict = HotShotUser.objects.filter(username=username_post, password=password_post)
             if login_dict.exists():
                 data = {'uid': '%s' % login_dict[0].uid}
                 return CustomResponse(code=1, msg='login success', data=data, status=status.HTTP_200_OK)
             return CustomResponse(code=0, msg='username or password error', status=status.HTTP_200_OK)
         if ac == 'register':
-            verify_code = request.data.get('verifyCode', '')
-            phone = request.data.get('phone', '')
             if verify_code == '' or phone == '':
-                return CustomResponse(code=0, msg='verifyCode or phone empty')
+                return CustomResponse(code=0, msg='verifyCode or phone empty', status=status.HTTP_400_BAD_REQUEST)
             if HotShotUser.objects.filter(phone=phone).exists():
                 return CustomResponse(code=0, msg='phone exist', data='', status=status.HTTP_400_BAD_REQUEST)
             if HotShotUser.objects.filter(username=username_post):
@@ -123,7 +128,6 @@ class UserViews(APIView):
             if smsModel.exists():
                 dt_now = int(time.time())
                 dt_old = int(smsModel[0].timestamp)
-                print((dt_now - dt_old))
                 if (dt_now - dt_old) <= 10 * 60:  # 验证码10分钟有效
                     uid = uuid.uuid1().int >> 90
                     # userModel = HotShotUser.objects.create(username=username_post, password=password_post, uid=str(uid),
@@ -136,9 +140,23 @@ class UserViews(APIView):
                     return CustomResponse(code=0, msg='insert user fail', data='',
                                           status=status.HTTP_503_SERVICE_UNAVAILABLE)
             return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
-
-    def get(self, request, format=None):
-        return CustomResponse(status=status.HTTP_400_BAD_REQUEST)
+        if ac == 'change':
+            if verify_code == '' or phone == '':
+                return CustomResponse(code=0, msg='verifyCode or phone empty', status=status.HTTP_400_BAD_REQUEST)
+            if not HotShotUser.objects.filter(phone=phone).exists():
+                return CustomResponse(code=0, msg='phone don\'t exist', data='', status=status.HTTP_400_BAD_REQUEST)
+            smsModel = SMSModel.objects.filter(phone=phone, code=verify_code)
+            if smsModel.exists():
+                dt_now = int(time.time())
+                dt_old = int(smsModel[0].timestamp)
+                if (dt_now - dt_old) <= 10 * 60:  # 验证码10分钟有效
+                    user_model = HotShotUser.objects.filter(phone=phone).update(password=password_post)
+                    if user_model == 1:
+                        return CustomResponse(code=1, msg='change password success', data='', status=status.HTTP_200_OK)
+                    return CustomResponse(code=0, msg='change password fail', data='',
+                                          status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
+            return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
 
 
 class SMSView(APIView):
@@ -165,15 +183,6 @@ class SnippetViewSet(viewsets.ModelViewSet):
     @action(detail=True)
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
-
-
-class UserFavoriteOEView(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin,
-                         viewsets.GenericViewSet):
-    serializer_class = UserFavoriteOESerializer
-    queryset = UserFavoriteOEModel.objects.all()
-
-    def get_queryset(self):
-        return UserFavoriteOEModel.objects.filter(uid=self.request.data.get('uid'))
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -209,3 +218,45 @@ class DYHotVideoViewSet(CustomReadOnlyViewSet):
 class LSPHotVideoViewSet(CustomReadOnlyViewSet):
     queryset = LSPHotVideoModel.objects.all().order_by('-created')
     serializer_class = LSPHotVideoSerializer
+
+
+class UserFavoriteOEView(CustomViewBase):
+    serializer_class = UserFavoriteOESerializer
+    queryset = UserFavoriteOEModel.objects.all()
+
+    def get_queryset(self):
+        return UserFavoriteOEModel.objects.filter(uid=self.request.GET.get('uid'))
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return UserFavoriteOEListSerializer
+        if self.action == 'create':
+            return UserFavoriteOESerializer
+
+
+class UserFavoriteDYView(CustomViewBase):
+    serializer_class = UserFavoriteDYSerializer
+    queryset = UserFavoriteDYModel.objects.all()
+
+    def get_queryset(self):
+        return UserFavoriteDYModel.objects.filter(uid=self.request.GET.get('uid'))
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return UserFavoriteDYListSerializer
+        if self.action == 'create':
+            return UserFavoriteDYSerializer
+
+
+class UserFavoriteLSPView(CustomViewBase):
+    serializer_class = UserFavoriteLSPSerializer
+    queryset = UserFavoriteLSPModel.objects.all()
+
+    def get_queryset(self):
+        return UserFavoriteLSPModel.objects.filter(uid=self.request.GET.get('uid'))
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return UserFavoriteLSPListSerializer
+        if self.action == 'create':
+            return UserFavoriteLSPSerializer

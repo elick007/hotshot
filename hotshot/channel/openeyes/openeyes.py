@@ -36,8 +36,8 @@ class OpenEyes:
         response = fetch(config.OPENEYES_HOT_URL, headers=config.header)
         if response == None:
             pass
-        #responseJson = json.loads(response)
-        responseJson=response
+        # responseJson = json.loads(response)
+        responseJson = response
         itemList = responseJson['itemList']
         for item in reversed(itemList):
             if item['type'] == 'video':
@@ -52,12 +52,16 @@ class OpenEyes:
 
     def insert_video(self, data=None, type='daily'):
         if type == 'daily':
-            OpenEyesDailyVideo.objects.create(title=data['title'], description=data['description'], cover=data['detail'],
+            OpenEyesDailyVideo.objects.create(title=data['title'], description=data['description'],
+                                              cover=data['detail'],
                                               playUrl=data['playUrl'])
         elif type == 'hot':
-            #HotVideo.objects.update_or_create(playUrl=data['playUrl'])
-            OpenEyesHotVideo.objects.update_or_create(title=data['title'], description=data['description'], cover=data['detail'],
-                                                      playUrl=data['playUrl'])
+            # HotVideo.objects.update_or_create(playUrl=data['playUrl'])
+            OpenEyesHotVideo.objects.update_or_create(playUrl=data['playUrl'], defaults={'title': data['title'],
+                                                                                         'description': data[
+                                                                                             'description'],
+                                                                                         'cover': data['detail'],
+                                                                                         })
 
     def deleteVideo(self):
         OpenEyesDailyVideo.objects.filter().delete()

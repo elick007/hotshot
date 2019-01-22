@@ -53,6 +53,7 @@ class SMSModel(models.Model):
     class Meta:
         pass
 
+
 #
 # class UserFavorite(models.Model):
 #     owner = models.ForeignKey('auth.User', related_name='favorite', on_delete=models.CASCADE)
@@ -115,9 +116,30 @@ class LSPHotVideoModel(models.Model):
 
 
 class UserFavoriteOEModel(models.Model):
-    uid = models.ForeignKey(HotShotUser, related_name='favorite uid', on_delete=models.CASCADE)
-    video = models.ForeignKey(OpenEyesHotVideo, related_name='favorite video', on_delete=models.CASCADE)
+    uid = models.ForeignKey(HotShotUser, related_name='oe_favorite_uid', on_delete=models.CASCADE)
+    video = models.ForeignKey(OpenEyesHotVideo, related_name='oe_favorite_video', on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('uid', 'video')
+        ordering = ('-created',)
+
+
+class UserFavoriteDYModel(models.Model):
+    uid = models.ForeignKey(HotShotUser, related_name='dy_favorite_uid', on_delete=models.CASCADE)
+    video = models.ForeignKey(DYHotVideoModel, related_name='dy_favorite_video', on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('uid', 'video')
+        ordering = ('-created',)
+
+
+class UserFavoriteLSPModel(models.Model):
+    uid = models.ForeignKey(HotShotUser, related_name='lsp_favorite_uid', on_delete=models.CASCADE)
+    video = models.ForeignKey(LSPHotVideoModel, related_name='lsp_favorite_video', on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('uid', 'video')
+        ordering = ('-created',)

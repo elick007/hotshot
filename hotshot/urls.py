@@ -35,16 +35,18 @@ LSP_hot_video_list = LSPHotVideoViewSet.as_view({
 user_favorite_OE = UserFavoriteOEView.as_view({
     'get': 'list',
     'post': 'create',
-    'delte': 'destroy'
+    'delete': 'destroy',
 })
 router = DefaultRouter()
 router.register(r'snippets', views.SnippetViewSet)
 # router.register(r'api/user', views.UserViewSet)
-router.register(r'api/videos/daily', views.DailyVideoViewSet)
-router.register(r'api/videos/hot', views.HotVideoViewSet)
-router.register(r'api/videos/douyin/hot', views.DYHotVideoViewSet)
+router.register(r'api/videos/oe/daily', views.DailyVideoViewSet)
+router.register(r'api/videos/oe/hot', views.HotVideoViewSet)
+router.register(r'api/videos/dy/hot', views.DYHotVideoViewSet)
 router.register(r'api/videos/lsp/hot', views.LSPHotVideoViewSet)
-router.register(r'api/videos/favorite',views.UserFavoriteOEView)
+router.register(r'api/user/favorite/oe',views.UserFavoriteOEView)
+router.register(r'api/user/favorite/dy',views.UserFavoriteDYView)
+router.register(r'api/user/favorite/lsp',views.UserFavoriteLSPView)
 # urlpatterns_hotshot = [
 #     path('', include(router.urls)),
 # ]

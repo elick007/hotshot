@@ -1,5 +1,6 @@
 import os
 import django
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "MyProject.settings")
 django.setup()
 
@@ -41,8 +42,9 @@ class LiShiPin:
 
     def inser_video_data(self, data, type='hot'):
         if type == 'hot':
-            LSPHotVideoModel.objects.update_or_create(title=data['title'], description=data['des'],
-                                            cover=data['cover'], playUrl=data['playUrl'])
+            LSPHotVideoModel.objects.update_or_create(playUrl=data['playUrl'],
+                                                      defaults={'title': data['title'], 'description': data['des'],
+                                                                'cover': data['cover']})
 
 
 if __name__ == '__main__':
