@@ -39,20 +39,30 @@ class HotShotUser(models.Model):
     password = models.CharField(max_length=13)
     created = models.DateTimeField(auto_now_add=True)
     uid = models.CharField(primary_key=True, unique=True, default='', max_length=13)
+    phone = models.CharField(unique=True, default='', max_length=11)
 
     class Meta:
         pass
 
 
-class UserFavorite(models.Model):
-    owner = models.ForeignKey('auth.User', related_name='favorite', on_delete=models.CASCADE)
-    created = models.DateTimeField(auto_now_add=True)
-    description = models.TextField(blank=True, default='')
-    cover = models.TextField(default='')
-    playUrl = models.TextField(default='')
+class SMSModel(models.Model):
+    phone = models.CharField(max_length=11, default='', unique=True)
+    code = models.CharField(max_length=6, default='')
+    timestamp = models.CharField(max_length=10, default='')
 
     class Meta:
-        ordering = ('created',)
+        pass
+
+#
+# class UserFavorite(models.Model):
+#     owner = models.ForeignKey('auth.User', related_name='favorite', on_delete=models.CASCADE)
+#     created = models.DateTimeField(auto_now_add=True)
+#     description = models.TextField(blank=True, default='')
+#     cover = models.TextField(default='')
+#     playUrl = models.TextField(default='')
+#
+#     class Meta:
+#         ordering = ('created',)
 
 
 class OpenEyesDailyVideo(models.Model):
@@ -102,3 +112,12 @@ class LSPHotVideoModel(models.Model):
 
     class Meta:
         ordering = ('created',)
+
+
+class UserFavoriteOEModel(models.Model):
+    uid = models.ForeignKey(HotShotUser, related_name='favorite uid', on_delete=models.CASCADE)
+    video = models.ForeignKey(OpenEyesHotVideo, related_name='favorite video', on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('uid', 'video')

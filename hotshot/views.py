@@ -1,11 +1,6 @@
+import time
 import uuid
-
 from django.contrib.auth.models import User
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render
-
-# Create your views here.
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
@@ -13,14 +8,18 @@ from rest_framework import permissions
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework import mixins
-
 from hotshot.base.restbase import CustomViewBase, CustomResponse, CustomReadOnlyViewSet
-from hotshot.models import Snippet, OpenEyesDailyVideo, OpenEyesHotVideo, UserFavorite, DYHotVideoModel, LSPHotVideoModel, HotShotUser
+from hotshot.models import Snippet, OpenEyesDailyVideo, OpenEyesHotVideo, DYHotVideoModel, \
+    LSPHotVideoModel, HotShotUser, SMSModel, UserFavoriteOEModel
 from hotshot.permissions import IsOwnerOrReadOnly
-from hotshot.serializers import SnippetSerializer, UserSerializer, OpenEyesDailyVideoSerializer, OpenEyesHotVideoSerializer, \
-    UserFavoriteSerializer, DYHotVideoSerializer, LSPHotVideoSerializer
-from rest_framework.parsers import JSONParser
+from hotshot.serializers import SnippetSerializer, UserSerializer, OpenEyesDailyVideoSerializer, \
+    OpenEyesHotVideoSerializer, \
+    UserFavoriteOESerializer, DYHotVideoSerializer, LSPHotVideoSerializer, SMSSerializer
 from rest_framework import generics
+
+from hotshot.utils.aesutil import decrypt_oralce
+from hotshot.utils.userutil import verify_phone
+from hotshot.utils.yunxin import Yunxin
 
 
 @api_view(['GET', 'POST'])
@@ -104,7 +103,7 @@ class UserViews(APIView):
     def post(self, request, format=None):
         ac = self.request.GET.get('ac')
         username_post = request.data['username']
-        password_post = request.data['password']
+        password_post = decrypt_oralce(request.data['password'])
         if ac == 'login':
             login_dict = HotShotUser.objects.filter(username=username_post, password=password_post)
             if login_dict.exists():
@@ -112,20 +111,50 @@ class UserViews(APIView):
                 return CustomResponse(code=1, msg='login success', data=data, status=status.HTTP_200_OK)
             return CustomResponse(code=0, msg='username or password error', status=status.HTTP_200_OK)
         if ac == 'register':
-            register_dict = HotShotUser.objects.filter(username=username_post)
-            if register_dict.exists():
-                return CustomResponse(code=0, msg='username exist', status=status.HTTP_200_OK)
-            else:
-                uid = uuid.uuid1().int >> 90
-                serializer = UserSerializer(data=request.data)
-                if serializer.is_valid():
-                    serializer.save(uid=str(uid))
-                    return CustomResponse(code=1, msg='register success', data='', status=status.HTTP_200_OK)
-                return CustomResponse(code=0, msg='system error', data='')
-        return CustomResponse(code=0, msg='key ac not right', data='')
+            verify_code = request.data.get('verifyCode', '')
+            phone = request.data.get('phone', '')
+            if verify_code == '' or phone == '':
+                return CustomResponse(code=0, msg='verifyCode or phone empty')
+            if HotShotUser.objects.filter(phone=phone).exists():
+                return CustomResponse(code=0, msg='phone exist', data='', status=status.HTTP_400_BAD_REQUEST)
+            if HotShotUser.objects.filter(username=username_post):
+                return CustomResponse(code=0, msg='username exist', data='', status=status.HTTP_400_BAD_REQUEST)
+            smsModel = SMSModel.objects.filter(phone=phone, code=verify_code)
+            if smsModel.exists():
+                dt_now = int(time.time())
+                dt_old = int(smsModel[0].timestamp)
+                print((dt_now - dt_old))
+                if (dt_now - dt_old) <= 10 * 60:  # 验证码10分钟有效
+                    uid = uuid.uuid1().int >> 90
+                    # userModel = HotShotUser.objects.create(username=username_post, password=password_post, uid=str(uid),
+                    #                                      phone=phone)
+                    save_data = {'username': username_post, 'password': password_post, 'phone': phone, 'uid': str(uid)}
+                    serializer = UserSerializer(data=save_data)
+                    if serializer.is_valid():
+                        serializer.save()
+                        return CustomResponse(code=1, msg='register success', data='', status=status.HTTP_200_OK)
+                    return CustomResponse(code=0, msg='insert user fail', data='',
+                                          status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, format=None):
-        return Response(None, status=status.HTTP_400_BAD_REQUEST)
+        return CustomResponse(status=status.HTTP_400_BAD_REQUEST)
+
+
+class SMSView(APIView):
+    def get(self, request, format=None):
+        phone = self.request.GET.get('phone')
+        if verify_phone(phone=phone):
+            yunxin = Yunxin()
+            sms_response = yunxin.get_sms(phone=phone)
+            if sms_response is not None and sms_response['code'] == 200:
+                sms_code = sms_response['obj']
+                SMSModel.objects.update_or_create(phone=phone,
+                                                  defaults={'code': sms_code, 'timestamp': str(int(time.time()))})
+                return CustomResponse(code=1, msg="require msm code success", data='', status=status.HTTP_200_OK)
+            return CustomResponse(code=0, msg='can not get msm code from yunxin',
+                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return CustomResponse(code=0, msg='phone error', data='', status=status.HTTP_400_BAD_REQUEST)
 
 
 class SnippetViewSet(viewsets.ModelViewSet):
@@ -138,9 +167,13 @@ class SnippetViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
 
 
-class UserFavoriteView(generics.ListCreateAPIView):
-    queryset = UserFavorite.objects.all()
-    serializer_class = UserFavoriteSerializer
+class UserFavoriteOEView(mixins.CreateModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin,
+                         viewsets.GenericViewSet):
+    serializer_class = UserFavoriteOESerializer
+    queryset = UserFavoriteOEModel.objects.all()
+
+    def get_queryset(self):
+        return UserFavoriteOEModel.objects.filter(uid=self.request.data.get('uid'))
 
 
 class UserViewSet(viewsets.ModelViewSet):

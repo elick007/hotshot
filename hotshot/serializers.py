@@ -2,11 +2,11 @@ import uuid
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from rest_framework.validators import UniqueValidator
+from rest_framework.validators import UniqueValidator, UniqueTogetherValidator
 
 from hotshot.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES, OpenEyesDailyVideo, OpenEyesHotVideo, HotShotUser, \
-    UserFavorite, \
-    DYHotVideoModel
+    UserFavoriteOEModel, \
+    DYHotVideoModel, SMSModel
 
 
 class SnippetSerializer(serializers.ModelSerializer):
@@ -17,12 +17,17 @@ class SnippetSerializer(serializers.ModelSerializer):
         fields = ('id', 'title', 'code', 'linenos', 'language', 'style', 'owner')
 
 
-class UserFavoriteSerializer(serializers.ModelSerializer):
-    # owner = serializers.ReadOnlyField(source='owner.username')
-
+class UserFavoriteOESerializer(serializers.ModelSerializer):
     class Meta:
-        model = UserFavorite
-        fields = ('id', 'description', 'cover', 'playUrl')
+        model = UserFavoriteOEModel
+        validators = [
+            UniqueTogetherValidator(
+                queryset=UserFavoriteOEModel.objects.all(),
+                fields=('uid', 'video'),
+                message='已经收藏'
+            )
+        ]
+        fields = ('id', 'uid', 'video')
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -32,8 +37,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = HotShotUser
         fields = ('username', 'password', 'uid')
 
-    def create(self, validated_data):
-        return super().create(validated_data)
+
+class SMSSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SMSModel
+        fields = ('phone', 'code', 'timestamp')
 
 
 class OpenEyesDailyVideoSerializer(serializers.ModelSerializer):
