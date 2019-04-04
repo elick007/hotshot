@@ -39,17 +39,11 @@ class CustomResponse(Response):
                 self[name] = value
 
 
-from hotshot import serializers
-from hotshot import models
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.pagination import PageNumberPagination
-from django.shortcuts import get_object_or_404
 from rest_framework import filters
 from django_filters import rest_framework
-from django_filters.rest_framework import DjangoFilterBackend
 
 
 class CustomViewBase(viewsets.ModelViewSet):
@@ -76,10 +70,11 @@ class CustomViewBase(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
+            # videoList = {"videoList": serializer.data, "nextLink": self.paginator.get_next_link()}
+            # return CustomResponse(data=videoList, code=1, msg="success", status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(queryset, many=True)
-        videoList = {"videoList": serializer.data}
-        return CustomResponse(data=videoList, code=1, msg="success", status=status.HTTP_200_OK)
+        return CustomResponse(data=serializer.data, code=1, msg="success", status=status.HTTP_200_OK)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -103,7 +98,7 @@ class CustomViewBase(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         self.perform_destroy(instance)
-        return CustomResponse(data=[], code=1, msg="delete resource success", status=status.HTTP_200_OK)
+        return CustomResponse(data=[], code=1, msg="delete resource success", status=status.HTTP_204_NO_CONTENT)
 
 
 class CustomReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
@@ -115,5 +110,4 @@ class CustomReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
             return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
-        videoList = {"videoList": serializer.data}
-        return CustomResponse(data=videoList, code=1, msg="success", status=status.HTTP_200_OK)
+        return CustomResponse(data=serializer.data, code=1, msg="success", status=status.HTTP_200_OK)

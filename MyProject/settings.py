@@ -26,7 +26,7 @@ SECRET_KEY = 'g7a2u#!ltn(xuub+o_t9y1-cawnro64_q!(@0qh(xu^7w@x2xm'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', '172.16.100.196', '192.168.42.228', '61.140.237.64', '223.104.63.110']
 
 # Application definition
 
@@ -39,8 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'hotshot.apps.HotshotConfig',
     'rest_framework',
+    'rest_framework.authtoken',
     'django_crontab',
 ]
+AUTH_USER_MODEL = "hotshot.HotShotUser"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -104,6 +106,10 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer'
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     )
 }
 # Internationalization
@@ -123,6 +129,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
-CRONJOBS = (
-    ('*/2 * * * *', 'hotshot.channel.updatetask.updateData'),
-)
+# CRONJOBS = (
+#     ('*/2 * * * *', 'hotshot.channel.updatetask.updateData'),
+# )
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media').replace("\\", "/")

@@ -1,28 +1,57 @@
 import uuid
 
-from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator, UniqueTogetherValidator
 
-from hotshot.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES, OpenEyesDailyVideo, OpenEyesHotVideo, HotShotUser, \
+from hotshot.models import OpenEyesDailyVideo, OpenEyesHotVideo, HotShotUser, \
     UserFavoriteOEModel, \
-    DYHotVideoModel, SMSModel, UserFavoriteDYModel, UserFavoriteLSPModel, LSPHotVideoModel
+    DYHotVideoModel, SMSModel, UserFavoriteDYModel, UserFavoriteLSPModel, LSPHotVideoModel, PublicVideoModel
 
 
-class SnippetSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.username')
-
-    class Meta:
-        model = Snippet
-        fields = ('id', 'title', 'code', 'linenos', 'language', 'style', 'owner')
-
-
-class UserSerializer(serializers.ModelSerializer):
+class HotShotUserSerializer(serializers.ModelSerializer):
     # snippet = serializers.PrimaryKeyRelatedField(many=True, queryset=Snippet.objects.all())
+    class Meta:
+        model = HotShotUser
+        fields = ('username', 'avatar', 'uid', 'phone')
+
+
+class UploadAvatarSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(max_length=None, allow_empty_file=False, use_url=True)
+    suffix = serializers.CharField(allow_blank=False)
 
     class Meta:
         model = HotShotUser
-        fields = ('username', 'password', 'uid', 'phone')
+        fields = ('avatar', 'suffix')
+
+
+class UploadPublicVideoSerializer(serializers.ModelSerializer):
+    video = serializers.FileField(allow_empty_file=False, use_url=True)
+    content = serializers.CharField(default='', allow_blank=True, max_length=200)
+    suffix = serializers.CharField(allow_blank=False, max_length=100)
+
+    class Meta:
+        model = PublicVideoModel
+        fields = ('video', 'content', 'suffix')
+
+
+class PublicVideoSerializer(serializers.ModelSerializer):
+    author = serializers.SerializerMethodField()
+
+    def get_author(self, obj):
+        if obj.author:
+            return {'username': obj.author.username, 'avatar': 'media/'+str(obj.author.avatar)}
+        return None
+
+    class Meta:
+        model = PublicVideoModel
+        fields = ('content', 'cover', 'playUrl', 'author')
+        depth = 1
+
+
+class AuthorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HotShotUser
+        fields = ('username', 'avatar')
 
 
 class SMSSerializer(serializers.ModelSerializer):
@@ -40,19 +69,21 @@ class OpenEyesDailyVideoSerializer(serializers.ModelSerializer):
 class OpenEyesHotVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = OpenEyesHotVideo
-        fields = ('id', 'created', 'title', 'description', 'cover', 'playUrl')
+        fields = ('id', 'created', 'type', 'date', 'duration', 'title', 'description', 'cover', 'playUrl')
 
 
 class DYHotVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DYHotVideoModel
-        fields = ('id', 'created', 'author', 'view', 'description', 'cover', 'playUrl')
+        fields = (
+            'id', 'created', 'type', 'date', 'duration', 'author', 'view', 'description', 'cover', 'playUrl', 'author')
 
 
 class LSPHotVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = LSPHotVideoModel
-        fields = ('id', 'created', 'title', 'description', 'cover', 'playUrl')
+        # fields = ('id', 'created', 'type', 'date', 'duration', 'title', 'description', 'cover', 'playUrl')
+        fields = '__all__'
 
 
 class UserFavoriteOESerializer(serializers.ModelSerializer):
@@ -65,7 +96,7 @@ class UserFavoriteOESerializer(serializers.ModelSerializer):
                 message='已经收藏'
             )
         ]
-        fields = ('id', 'uid', 'video')
+        fields = '__all__'
 
 
 class UserFavoriteOEListSerializer(serializers.ModelSerializer):
@@ -73,7 +104,7 @@ class UserFavoriteOEListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OpenEyesHotVideo
-        fields = ('id', 'video')
+        fields = ('video', 'id')
 
 
 class UserFavoriteDYSerializer(serializers.ModelSerializer):

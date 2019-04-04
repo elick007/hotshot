@@ -1,162 +1,146 @@
+import os
 import time
 import uuid
+
+import cv2
+from PIL import Image
 from django.contrib.auth.models import User
-from rest_framework import status
-from rest_framework.decorators import api_view, action
-from rest_framework.response import Response
-from rest_framework import permissions
+from rest_framework import status, authentication, permissions, parsers, renderers
 from rest_framework import viewsets
 from rest_framework.views import APIView
-from rest_framework import mixins
+
+from MyProject import settings
+from hotshot import serializers
+from hotshot.base.custom_pagination import LargeResultsSetPagination
 from hotshot.base.restbase import CustomViewBase, CustomResponse, CustomReadOnlyViewSet
-from hotshot.models import Snippet, OpenEyesDailyVideo, OpenEyesHotVideo, DYHotVideoModel, \
-    LSPHotVideoModel, HotShotUser, SMSModel, UserFavoriteOEModel, UserFavoriteDYModel, UserFavoriteLSPModel
+from hotshot.models import OpenEyesDailyVideo, OpenEyesHotVideo, DYHotVideoModel, \
+    LSPHotVideoModel, HotShotUser, SMSModel, UserFavoriteOEModel, UserFavoriteDYModel, UserFavoriteLSPModel, \
+    PublicVideoModel
 from hotshot.permissions import IsOwnerOrReadOnly
-from hotshot.serializers import SnippetSerializer, UserSerializer, OpenEyesDailyVideoSerializer, \
+from hotshot.serializers import HotShotUserSerializer, OpenEyesDailyVideoSerializer, \
     OpenEyesHotVideoSerializer, \
     UserFavoriteOESerializer, DYHotVideoSerializer, LSPHotVideoSerializer, SMSSerializer, UserFavoriteOEListSerializer, \
-    UserFavoriteDYSerializer, UserFavoriteDYListSerializer, UserFavoriteLSPSerializer, UserFavoriteLSPListSerializer
+    UserFavoriteDYSerializer, UserFavoriteDYListSerializer, UserFavoriteLSPSerializer, UserFavoriteLSPListSerializer, \
+    UploadAvatarSerializer, UploadPublicVideoSerializer, PublicVideoSerializer
 from rest_framework import generics
-
-from hotshot.utils.aesutil import decrypt_oralce
 from hotshot.utils.userutil import verify_phone
 from hotshot.utils.yunxin import Yunxin
 
 
-@api_view(['GET', 'POST'])
-def snippet_list(request):
-    if request.method == 'GET':
-        snippets = Snippet.objects.all()
-        serializer = SnippetSerializer(snippets, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = SnippetSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# @api_view(['GET', 'POST'])
+# def snippet_list(request):
+#     if request.method == 'GET':
+#         snippets = Snippet.objects.all()
+#         serializer = SnippetSerializer(snippets, many=True)
+#         return Response(serializer.data)
+#     elif request.method == 'POST':
+#         serializer = SnippetSerializer(data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# @api_view(['GET', 'PUT', 'DELETE'])
+# def snippet_detail(request, pk):
+#     """
+#     Retrieve, update or delete a code snippet.
+#     """
+#     try:
+#         snippet = Snippet.objects.get(pk=pk)
+#     except Snippet.DoesNotExist:
+#         return Response(status=status.HTTP_400_BAD_REQUEST)
+#
+#     if request.method == 'GET':
+#         serializer = SnippetSerializer(snippet)
+#         return Response(serializer.data)
+#
+#     elif request.method == 'PUT':
+#         serializer = SnippetSerializer(snippet, data=request.data)
+#         if serializer.is_valid():
+#             serializer.save()
+#             return Response(serializer.data)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     elif request.method == 'DELETE':
+#         snippet.delete()
+#         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@api_view(['POST'])
-def user_ac(request):
-    if request.method == 'POST':
-        uid = uuid.uuid1().int >> 90
-        serializer = UserSerializer(data=request.data, uid=uid)
-        if serializer.is_valid():
-            return Response(data='diaomao', status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(['GET', 'PUT', 'DELETE'])
-def snippet_detail(request, pk):
-    """
-    Retrieve, update or delete a code snippet.
-    """
-    try:
-        snippet = Snippet.objects.get(pk=pk)
-    except Snippet.DoesNotExist:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-    if request.method == 'GET':
-        serializer = SnippetSerializer(snippet)
-        return Response(serializer.data)
-
-    elif request.method == 'PUT':
-        serializer = SnippetSerializer(snippet, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == 'DELETE':
-        snippet.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class SnippetList(generics.ListCreateAPIView):
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
-
-
-class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly)
-
-
-class UserList(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
-
-
-class UserDetail(generics.RetrieveAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-
-class UserViews(APIView):
+class UserLoginViews(APIView):
+    queryset = HotShotUser.objects.all()
+    serializer_class = HotShotUserSerializer
 
     def post(self, request, format=None):
-        ac = self.request.GET.get('ac')
         username_post = request.data.get('username', '')
-        # password_post = decrypt_oralce(request.data['password'])
         password_post = request.data.get('password', '')
-        verify_code = request.data.get('verifyCode', '')
         phone = request.data.get('phone', '')
-        if ac == 'login':
-            if username_post == '':
-                login_dict = HotShotUser.objects.filter(phone=phone, password=password_post)
-            else:
-                login_dict = HotShotUser.objects.filter(username=username_post, password=password_post)
-            if login_dict.exists():
-                data = {'uid': '%s' % login_dict[0].uid}
-                return CustomResponse(code=1, msg='login success', data=data, status=status.HTTP_200_OK)
-            return CustomResponse(code=0, msg='username or password error', status=status.HTTP_200_OK)
-        if ac == 'register':
-            if verify_code == '' or phone == '':
-                return CustomResponse(code=0, msg='verifyCode or phone empty', status=status.HTTP_400_BAD_REQUEST)
-            if HotShotUser.objects.filter(phone=phone).exists():
-                return CustomResponse(code=0, msg='phone exist', data='', status=status.HTTP_400_BAD_REQUEST)
-            if HotShotUser.objects.filter(username=username_post):
-                return CustomResponse(code=0, msg='username exist', data='', status=status.HTTP_400_BAD_REQUEST)
-            smsModel = SMSModel.objects.filter(phone=phone, code=verify_code)
-            if smsModel.exists():
-                dt_now = int(time.time())
-                dt_old = int(smsModel[0].timestamp)
-                if (dt_now - dt_old) <= 10 * 60:  # 验证码10分钟有效
-                    uid = uuid.uuid1().int >> 90
-                    # userModel = HotShotUser.objects.create(username=username_post, password=password_post, uid=str(uid),
-                    #                                      phone=phone)
-                    save_data = {'username': username_post, 'password': password_post, 'phone': phone, 'uid': str(uid)}
-                    serializer = UserSerializer(data=save_data)
-                    if serializer.is_valid():
-                        serializer.save()
-                        return CustomResponse(code=1, msg='register success', data='', status=status.HTTP_200_OK)
-                    return CustomResponse(code=0, msg='insert user fail', data='',
-                                          status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
-        if ac == 'change':
-            if verify_code == '' or phone == '':
-                return CustomResponse(code=0, msg='verifyCode or phone empty', status=status.HTTP_400_BAD_REQUEST)
-            if not HotShotUser.objects.filter(phone=phone).exists():
-                return CustomResponse(code=0, msg='phone don\'t exist', data='', status=status.HTTP_400_BAD_REQUEST)
-            smsModel = SMSModel.objects.filter(phone=phone, code=verify_code)
-            if smsModel.exists():
-                dt_now = int(time.time())
-                dt_old = int(smsModel[0].timestamp)
-                if (dt_now - dt_old) <= 10 * 60:  # 验证码10分钟有效
-                    user_model = HotShotUser.objects.filter(phone=phone).update(password=password_post)
-                    if user_model == 1:
-                        return CustomResponse(code=1, msg='change password success', data='', status=status.HTTP_200_OK)
-                    return CustomResponse(code=0, msg='change password fail', data='',
-                                          status=status.HTTP_503_SERVICE_UNAVAILABLE)
-                return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
-            return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
+        if username_post != '':
+            if not HotShotUser.objects.filter(username__exact=username_post):
+                return CustomResponse(code=100, msg='用户名不存在', data=None, status=status.HTTP_204_NO_CONTENT)
+            user = HotShotUser.objects.get(username__exact=username_post)
+            if user.check_password(password_post):
+                serializer = serializers.HotShotUserSerializer(user)
+                return CustomResponse(code=1, msg='login success', data=serializer.data, status=status.HTTP_200_OK)
+            return CustomResponse(code=101, msg='密码错误', status=status.HTTP_400_BAD_REQUEST)
+        if phone != '':
+            if not HotShotUser.objects.filter(phone__exact=phone):
+                return CustomResponse(code=102, msg='手机号不存在', data=None, status=status.HTTP_400_BAD_REQUEST)
+            user = HotShotUser.objects.get(phone__exact=phone)
+            if user.check_password(password_post):
+                serializer = serializers.HotShotUserSerializer(user)
+                return CustomResponse(code=1, msg='login success', data=serializer.data, status=status.HTTP_200_OK)
+            return CustomResponse(code=101, msg='密码错误', status=status.HTTP_400_BAD_REQUEST)
+        serializer = serializers.HotShotUserSerializer(data=request.data)
+        return CustomResponse(code=201, msg=serializer.errors, data=None, status=status.HTTP_400_BAD_REQUEST)
+        # if ac == 'change':
+        #     if verify_code == '' or phone == '':
+        #         return CustomResponse(code=0, msg='verifyCode or phone empty', status=status.HTTP_400_BAD_REQUEST)
+        #     if not HotShotUser.objects.filter(phone=phone).exists():
+        #         return CustomResponse(code=0, msg='phone don\'t exist', data='', status=status.HTTP_400_BAD_REQUEST)
+        #     smsModel = SMSModel.objects.filter(phone=phone, code=verify_code)
+        #     if smsModel.exists():
+        #         dt_now = int(time.time())
+        #         dt_old = int(smsModel[0].timestamp)
+        #         if (dt_now - dt_old) <= 10 * 60:  # 验证码10分钟有效
+        #             user_model = HotShotUser.objects.filter(phone=phone).update(password=password_post)
+        #             if user_model == 1:
+        #                 return CustomResponse(code=1, msg='change password success', data='', status=status.HTTP_200_OK)
+        #             return CustomResponse(code=0, msg='change password fail', data='',
+        #                                   status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        #         return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
+        #     return CustomResponse(code=0, msg='verifyCode error', status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserRegisterView(APIView):
+    queryset = HotShotUser.objects.all()
+    serializer_class = HotShotUserSerializer
+
+    def post(self, request, format=None):
+        verify = request.data.get('verify', '')
+        username = request.data.get('username', '')
+        phone = request.data.get('phone', '')
+        if verify == '':
+            return CustomResponse(data=None, code=103, msg="verify is empty", status=status.HTTP_400_BAD_REQUEST)
+        if HotShotUser.objects.filter(phone__exact=phone):
+            return CustomResponse(code=104, msg='phone exist', data='', status=status.HTTP_400_BAD_REQUEST)
+        if HotShotUser.objects.filter(username__exact=username):
+            return CustomResponse(code=105, msg='username exist', data='', status=status.HTTP_400_BAD_REQUEST)
+        serializers = HotShotUserSerializer(data=request.data)
+        smsModel = SMSModel.objects.filter(phone=phone, code=verify)
+        if smsModel.exists():
+            dt_now = int(time.time())
+            dt_old = int(smsModel[0].timestamp)
+            if (dt_now - dt_old) <= 10 * 60:  # 验证码10分钟有效
+                if serializers.is_valid():
+                    user = serializers.save()
+                    # 加密密码
+                    user.set_password(user.password)
+                    uid = uuid.uuid1().int >> 108
+                    HotShotUser.objects.filter(id=user.id).update(password=user.password, is_active=True, uid=uid)
+                    return CustomResponse(data=serializers.data, code=1, msg="success", status=status.HTTP_200_OK)
+                return CustomResponse(data=serializers.errors, code=201, msg='fail', status=status.HTTP_400_BAD_REQUEST)
+            return CustomResponse(data=None, code=106, msg='verify invalid', status=status.HTTP_400_BAD_REQUEST)
+        return CustomResponse(data=None, code=201, msg="param error", status=status.HTTP_400_BAD_REQUEST)
 
 
 class SMSView(APIView):
@@ -170,93 +154,223 @@ class SMSView(APIView):
                 SMSModel.objects.update_or_create(phone=phone,
                                                   defaults={'code': sms_code, 'timestamp': str(int(time.time()))})
                 return CustomResponse(code=1, msg="require msm code success", data='', status=status.HTTP_200_OK)
-            return CustomResponse(code=0, msg='can not get msm code from yunxin',
+            return CustomResponse(code=107, msg='can not get msm code from yunxin',
                                   status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return CustomResponse(code=0, msg='phone error', data='', status=status.HTTP_400_BAD_REQUEST)
+        return CustomResponse(code=108, msg='phone error', data='', status=status.HTTP_400_BAD_REQUEST)
 
 
-class SnippetViewSet(viewsets.ModelViewSet):
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly,)
+class AvatarUploadView(APIView):
+    throttle_classes = ()
+    authentication_classes = (authentication.TokenAuthentication,)
+    permission_classes = (permissions.IsAuthenticated,)
+    parser_classes = (parsers.FormParser, parsers.MultiPartParser,
+                      parsers.JSONParser, parsers.FileUploadParser,)
 
-    @action(detail=True)
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+    def post(self, request, format='json'):
+        serializers = UploadAvatarSerializer(data=request.data)
+        if serializers.is_valid():
+            suffix = request.data.get('suffix').split('.')[1]
+            user = HotShotUser.objects.get(username__exact=request.user.username)
+            avatar_name = user.uid + "." + suffix
+            avatar = Image.open(request.data['avatar'])
+            avatar_file_path = os.path.join(settings.MEDIA_ROOT, 'avatar/' + avatar_name)
+            avatar.save(avatar_file_path)
+            HotShotUser.objects.filter(id=request.user.id).update(avatar='avatar/' + avatar_name)
+            return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
+        return CustomResponse(data=serializers.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = HotShotUser.objects.all()
-    serializer_class = UserSerializer
+class PublicVideoUploadView(APIView):
+    throttle_classes = ()
+    authentication_classes = (authentication.TokenAuthentication,)
+    permission_classes = (permissions.IsAuthenticated,)
+    parser_classes = (parsers.FormParser, parsers.MultiPartParser,
+                      parsers.JSONParser, parsers.FileUploadParser,)
 
-    # def list(self, request, *args, **kwargs):
-    #     return Response(data=None, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, format='json'):
+        serializers = UploadPublicVideoSerializer(data=request.data)
+        if serializers.is_valid():
+            suffix = request.data.get('suffix').split('.')[1]
+            video = request.data['video']
+            random = str(uuid.uuid1().time)
+            video_name = random + '.' + suffix
+            video_path = os.path.join(settings.MEDIA_ROOT + '/public/video/', video_name)
+            video_stream = open(video_path, 'wb+')
+            for chunk in video.chunks():
+                video_stream.write(chunk)
+            video_stream.close()
+            # 获取第一帧
+            cap = cv2.VideoCapture(video_path)
+            cap.set(cv2.CAP_PROP_POS_MSEC, 1)
+            success, image = cap.read()
+            if success:
+                image_path = os.path.join(settings.MEDIA_ROOT + '/public/cover/', random + '.jpg')
+                cv2.imwrite(image_path, image)
+                author = HotShotUser.objects.get(id=request.user.id)
+                public_video = PublicVideoModel()
+                public_video.playUrl = 'public/video/' + video_name
+                public_video.content = request.data.get('content', '')
+                public_video.cover = 'public/cover/' + random + '.jpg'
+                public_video.author = author
+                public_video.save()
+            return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
+        return CustomResponse(data=None, code=0, msg=serializers.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def perform_create(self, serializer):
-        uid = uuid.uuid1().int >> 90
-        if serializer.is_valid():
-            serializer.save(uid=str(uid))
 
+class PublicVideoView(CustomReadOnlyViewSet):
+    queryset = PublicVideoModel.objects.order_by('-created')
+    serializer_class = PublicVideoSerializer
+
+
+# class SnippetViewSet(viewsets.ModelViewSet):
+#     queryset = Snippet.objects.all()
+#     serializer_class = SnippetSerializer
+#     permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly,)
+#
+#     @action(detail=True)
+#     def perform_create(self, serializer):
+#         serializer.save(owner=self.request.user)
 
 class DailyVideoViewSet(CustomReadOnlyViewSet):
-    queryset = OpenEyesDailyVideo.objects.all().order_by('-created')
+    queryset = OpenEyesDailyVideo.objects.order_by('-created')
     serializer_class = OpenEyesDailyVideoSerializer
 
 
-class HotVideoViewSet(CustomReadOnlyViewSet):
-    queryset = OpenEyesHotVideo.objects.all().order_by('-created')
+class OEHotVideoViewSet(CustomReadOnlyViewSet):
+    queryset = OpenEyesHotVideo.objects.order_by('-created')
     serializer_class = OpenEyesHotVideoSerializer
-    # def list(self, request, *args, **kwargs):
-    #     return CustomResponse(code=1,data=[],msg='lalala')
+    pagination_class = LargeResultsSetPagination
+
+
+class OERandomVideoViewSet(CustomReadOnlyViewSet):
+    queryset = OpenEyesHotVideo.objects.order_by('?')[:10]
+    serializer_class = OpenEyesHotVideoSerializer
 
 
 class DYHotVideoViewSet(CustomReadOnlyViewSet):
-    queryset = DYHotVideoModel.objects.all().order_by('-created')
+    queryset = DYHotVideoModel.objects.order_by('-created')[:30]
+    serializer_class = DYHotVideoSerializer
+    pagination_class = LargeResultsSetPagination
+
+
+class DYRandomVideoViewSet(CustomReadOnlyViewSet):
+    queryset = DYHotVideoModel.objects.order_by('?')[:10]
     serializer_class = DYHotVideoSerializer
 
 
 class LSPHotVideoViewSet(CustomReadOnlyViewSet):
-    queryset = LSPHotVideoModel.objects.all().order_by('-created')
+    queryset = LSPHotVideoModel.objects.order_by('-created')[:30]
+    serializer_class = LSPHotVideoSerializer
+    pagination_class = LargeResultsSetPagination
+
+
+class LSPRandomVideoViewSet(CustomReadOnlyViewSet):
+    queryset = LSPHotVideoModel.objects.order_by('?')[:10]
     serializer_class = LSPHotVideoSerializer
 
 
-class UserFavoriteOEView(CustomViewBase):
-    serializer_class = UserFavoriteOESerializer
-    queryset = UserFavoriteOEModel.objects.all()
+class UserFavoriteOEView(APIView):
+    authentication_classes = (authentication.TokenAuthentication,)
+    permission_classes = (permissions.IsAuthenticated,)
+    def get(self, request, format=None):
+        ac = self.request.GET.get('ac')
+        # uid = self.request.GET.get('uid')
+        if ac == 'list':
+            model = UserFavoriteOEModel.objects.filter(uid=request.user.id)
+            serializer = UserFavoriteOEListSerializer(model, many=True)
+            return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
+        elif ac == "retrieve":
+            video_id = self.request.GET.get('video_id')
+            model = UserFavoriteOEModel.objects.filter(uid=request.user.id, video_id=video_id)
+            if model.exists():
+                serializer = UserFavoriteOEListSerializer(model, many=True)
+                return CustomResponse(data=serializer.data, code=1, msg='exist', status=status.HTTP_200_OK)
+            else:
+                return CustomResponse(data=None, code=0, msg='don\'t exist', status=status.HTTP_404_NOT_FOUND)
+        return CustomResponse(data=None, code=0, msg='parameter error', status=status.HTTP_400_BAD_REQUEST)
 
-    def get_queryset(self):
-        return UserFavoriteOEModel.objects.filter(uid=self.request.GET.get('uid'))
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return UserFavoriteOEListSerializer
-        if self.action == 'create':
-            return UserFavoriteOESerializer
-
-
-class UserFavoriteDYView(CustomViewBase):
-    serializer_class = UserFavoriteDYSerializer
-    queryset = UserFavoriteDYModel.objects.all()
-
-    def get_queryset(self):
-        return UserFavoriteDYModel.objects.filter(uid=self.request.GET.get('uid'))
-
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return UserFavoriteDYListSerializer
-        if self.action == 'create':
-            return UserFavoriteDYSerializer
+    def post(self, request, format=None):
+        ac = self.request.GET.get('ac')
+        if ac == 'add':
+            serializer = UserFavoriteOESerializer(uid=1,video=8)
+            if serializer.is_valid():
+                serializer.save()
+                return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
+            return CustomResponse(data=serializer.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
+        elif ac == 'del':
+            model = UserFavoriteOEModel.objects.filter(uid=self.request.GET.get('uid'),
+                                                       video_id=self.request.GET.get('video_id'))
+            if model.exists():
+                model.delete()
+                return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
+            return CustomResponse(data=None, code=0, msg='error', status=status.HTTP_204_NO_CONTENT)
 
 
-class UserFavoriteLSPView(CustomViewBase):
-    serializer_class = UserFavoriteLSPSerializer
-    queryset = UserFavoriteLSPModel.objects.all()
+class UserFavoriteDYView(APIView):
+    def get(self, request, format=None):
+        ac = self.request.GET.get('ac')
+        uid = self.request.GET.get('uid')
+        if ac == 'list':
+            model = UserFavoriteDYModel.objects.filter(uid=uid)
+            serializer = UserFavoriteDYListSerializer(model, many=True)
+            return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
+        elif ac == "retrieve":
+            video_id = self.request.GET.get('video_id')
+            model = UserFavoriteDYModel.objects.filter(uid=uid, video_id=video_id)
+            if model.exists():
+                serializer = UserFavoriteDYListSerializer(model, many=True)
+                return CustomResponse(data=serializer.data, code=1, msg='exist', status=status.HTTP_200_OK)
+            else:
+                return CustomResponse(data=None, code=0, msg='don\'t exist', status=status.HTTP_404_NOT_FOUND)
+        return CustomResponse(data=None, code=0, msg='parameter error', status=status.HTTP_400_BAD_REQUEST)
 
-    def get_queryset(self):
-        return UserFavoriteLSPModel.objects.filter(uid=self.request.GET.get('uid'))
+    def post(self, request, format=None):
+        ac = self.request.GET.get('ac')
+        if ac == 'add':
+            serializer = UserFavoriteDYSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
+            return CustomResponse(data=serializer.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
+        elif ac == 'del':
+            model = UserFavoriteDYModel.objects.filter(uid=self.request.GET.get('uid'),
+                                                       video_id=self.request.GET.get('video_id'))
+            if model.exists():
+                model.delete()
+                return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
+            return CustomResponse(data=None, code=0, msg='error', status=status.HTTP_204_NO_CONTENT)
 
-    def get_serializer_class(self):
-        if self.action == 'list':
-            return UserFavoriteLSPListSerializer
-        if self.action == 'create':
-            return UserFavoriteLSPSerializer
+
+class UserFavoriteLSPView(APIView):
+    def get(self, request, format=None):
+        ac = self.request.GET.get('ac')
+        uid = self.request.GET.get('uid')
+        if ac == 'list':
+            model = UserFavoriteLSPModel.objects.filter(uid=uid)
+            serializer = UserFavoriteLSPListSerializer(model, many=True)
+            return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
+        elif ac == "retrieve":
+            video_id = self.request.GET.get('video_id')
+            model = UserFavoriteLSPModel.objects.filter(uid=uid, video_id=video_id)
+            if model.exists():
+                serializer = UserFavoriteLSPListSerializer(model, many=True)
+                return CustomResponse(data=serializer.data, code=1, msg='exist', status=status.HTTP_200_OK)
+            else:
+                return CustomResponse(data=None, code=0, msg='don\'t exist', status=status.HTTP_404_NOT_FOUND)
+        return CustomResponse(data=None, code=0, msg='parameter error', status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request, format=None):
+        ac = self.request.GET.get('ac')
+        if ac == 'add':
+            serializer = UserFavoriteLSPSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
+            return CustomResponse(data=serializer.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
+        elif ac == 'del':
+            model = UserFavoriteLSPModel.objects.filter(uid=self.request.GET.get('uid'),
+                                                        video_id=self.request.GET.get('video_id'))
+            if model.exists():
+                model.delete()
+                return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
+            return CustomResponse(data=None, code=0, msg='error', status=status.HTTP_204_NO_CONTENT)

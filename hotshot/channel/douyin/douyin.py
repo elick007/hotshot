@@ -3,7 +3,8 @@ import django
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "MyProject.settings")
 django.setup()
-from hotshot.models import DYHotVideoModel
+from rest_framework.authtoken.models import Token
+from hotshot.models import DYHotVideoModel, HotShotUser
 from hotshot.channel.douyin.config import douyin_hot_video_url, header, douyin_positive_video_url
 from hotshot.utils.fetch import fetch
 
@@ -36,15 +37,17 @@ class Douyin:
                     data['view'] = statistics['play_count']
                     data['description'] = aweme_info['desc']
                     data['cover'] = cover_url_list[0]
-                    data['playUrl'] = video_url_list[0]
-                    self.insert_video(data, type='hot')
+                    data['playUrl'] = video_url_list[0].replace('https://', 'http://')
+                    data['type'] = 'hot'
+                    data['date'] = aweme_info['create_time']
+                    self.insert_video(data)
 
-    def insert_video(self, data=None, type='hot'):
-        if type == 'hot':
-            DYHotVideoModel.objects.update_or_create(playUrl=data['playUrl'],
-                                                     defaults={'author': data['author'], 'view': data['view'],
-                                                               'description': data['description'],
-                                                               'cover': data['cover']})
+    def insert_video(self, data=None):
+        DYHotVideoModel.objects.update_or_create(playUrl=data['playUrl'],
+                                                 defaults={'author': data['author'], 'view': data['view'],
+                                                           'description': data['description'],
+                                                           'cover': data['cover'], 'type': data['type'],
+                                                           'date': data['date']})
 
     def get_positive_video(self):
         response = fetch(douyin_positive_video_url, headers=header)
@@ -81,3 +84,4 @@ class Douyin:
 if __name__ == '__main__':
     douyin = Douyin()
     douyin.get_hot_video()
+

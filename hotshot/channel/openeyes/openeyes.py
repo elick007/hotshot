@@ -9,8 +9,6 @@ from hotshot.channel.openeyes import config
 from hotshot.utils.fetch import fetch
 
 
-# Video.objects.create(title='123', cover='456')
-# Video.objects.create(title='000',cover='111')
 class OpenEyes:
 
     def get_daily_video(self):
@@ -30,6 +28,7 @@ class OpenEyes:
                 srcData['description'] = data['description']
                 srcData['detail'] = cover['detail']
                 srcData['playUrl'] = data['playUrl']
+                srcData['type'] = 'hot'
                 self.insert_video(srcData)
 
     def get_hot_video(self):
@@ -48,20 +47,19 @@ class OpenEyes:
                 srcData['description'] = data['description']
                 srcData['detail'] = cover['detail']
                 srcData['playUrl'] = data['playUrl']
-                self.insert_video(srcData, 'hot')
+                srcData['duration'] = data['duration']
+                srcData['date'] = data['date']
+                srcData['type'] = 'hot'
+                self.insert_video(srcData)
 
-    def insert_video(self, data=None, type='daily'):
-        if type == 'daily':
-            OpenEyesDailyVideo.objects.create(title=data['title'], description=data['description'],
-                                              cover=data['detail'],
-                                              playUrl=data['playUrl'])
-        elif type == 'hot':
-            # HotVideo.objects.update_or_create(playUrl=data['playUrl'])
-            OpenEyesHotVideo.objects.update_or_create(playUrl=data['playUrl'], defaults={'title': data['title'],
-                                                                                         'description': data[
-                                                                                             'description'],
-                                                                                         'cover': data['detail'],
-                                                                                         })
+    def insert_video(self, data=None):
+        OpenEyesHotVideo.objects.update_or_create(playUrl=data['playUrl'], defaults={'title': data['title'],
+                                                                                     'description': data[
+                                                                                         'description'],
+                                                                                     'cover': data['detail'],
+                                                                                     'duration': data['duration'],
+                                                                                     'date': data['date'],
+                                                                                     'type': data['type']})
 
     def deleteVideo(self):
         OpenEyesDailyVideo.objects.filter().delete()
