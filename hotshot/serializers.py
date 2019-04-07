@@ -15,6 +15,12 @@ class HotShotUserSerializer(serializers.ModelSerializer):
         fields = ('username', 'avatar', 'uid', 'phone')
 
 
+class HotShotUserRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HotShotUser
+        fields = ('username', 'phone', 'password','uid')
+
+
 class UploadAvatarSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(max_length=None, allow_empty_file=False, use_url=True)
     suffix = serializers.CharField(allow_blank=False)
@@ -39,7 +45,7 @@ class PublicVideoSerializer(serializers.ModelSerializer):
 
     def get_author(self, obj):
         if obj.author:
-            return {'username': obj.author.username, 'avatar': 'media/'+str(obj.author.avatar)}
+            return {'username': obj.author.username, 'avatar': 'media/' + str(obj.author.avatar)}
         return None
 
     class Meta:

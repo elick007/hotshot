@@ -26,7 +26,7 @@ SECRET_KEY = 'g7a2u#!ltn(xuub+o_t9y1-cawnro64_q!(@0qh(xu^7w@x2xm'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', '172.16.100.196', '192.168.42.228', '61.140.237.64', '223.104.63.110']
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'hotshot.apps.HotshotConfig',
     'rest_framework',
     'rest_framework.authtoken',
-    'django_crontab',
+    #'django_crontab',
 ]
 AUTH_USER_MODEL = "hotshot.HotShotUser"
 
