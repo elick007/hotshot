@@ -136,8 +136,8 @@ class UserFavoriteLSPModel(models.Model):
 
 class PublicVideoModel(models.Model):
     content = models.TextField(default='')
-    playUrl = models.FileField(upload_to='public/video/%Y/%m/%d', blank=False, max_length=50 * 1024 * 1024)
-    cover = models.ImageField(upload_to='public/cover/%Y/%m/%d', blank=False,max_length=1024*1024)
+    playUrl = models.FileField(upload_to='public/video/%Y/%m/%d', blank=False)
+    cover = models.ImageField(upload_to='public/cover/%Y/%m/%d', blank=False)
     author = models.ForeignKey(HotShotUser, related_name='public_video_author', on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
 

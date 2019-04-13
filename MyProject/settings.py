@@ -80,8 +80,15 @@ WSGI_APPLICATION = 'MyProject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'django_hotshot',
+        'USER': 'root',
+        'PASSWORD': '950810',
+        'HOST': '127.0.0.1',
+        'POST': '3306',
+        'OPTIONS': {'charset': 'utf8mb4'},
     }
 }
 
