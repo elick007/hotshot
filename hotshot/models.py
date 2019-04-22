@@ -143,3 +143,9 @@ class PublicVideoModel(models.Model):
 
     class Meta:
         ordering = ('-created',)
+
+
+class OECommentModel(models.Model):
+    video = models.ForeignKey(OpenEyesHotVideo, related_name='comment_oe', on_delete=models.CASCADE)
+    user = models.ForeignKey(HotShotUser, related_name='comment_user', on_delete=models.CASCADE)
+    content = models.TextField(blank=False)

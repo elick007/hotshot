@@ -7,10 +7,11 @@ from PIL import Image
 from django.contrib.auth.models import User
 from rest_framework import status, authentication, permissions, parsers, renderers
 from rest_framework import viewsets
+from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.views import APIView
 
 from MyProject import settings
-from hotshot import serializers
+from hotshot import serializers, models
 from hotshot.base.custom_pagination import LargeResultsSetPagination
 from hotshot.base.restbase import CustomViewBase, CustomResponse, CustomReadOnlyViewSet
 from hotshot.models import OpenEyesDailyVideo, OpenEyesHotVideo, DYHotVideoModel, \
@@ -21,7 +22,7 @@ from hotshot.serializers import HotShotUserSerializer, OpenEyesDailyVideoSeriali
     OpenEyesHotVideoSerializer, \
     UserFavoriteOESerializer, DYHotVideoSerializer, LSPHotVideoSerializer, SMSSerializer, UserFavoriteOEListSerializer, \
     UserFavoriteDYSerializer, UserFavoriteDYListSerializer, UserFavoriteLSPSerializer, UserFavoriteLSPListSerializer, \
-    UploadAvatarSerializer, UploadPublicVideoSerializer, PublicVideoSerializer
+    UploadAvatarSerializer, UploadPublicVideoSerializer, PublicVideoSerializer, OECommentSerializer
 from rest_framework import generics
 from hotshot.utils.userutil import verify_phone
 from hotshot.utils.yunxin import Yunxin
@@ -73,25 +74,30 @@ class UserLoginViews(APIView):
     def post(self, request, format=None):
         username_post = request.data.get('username', '')
         password_post = request.data.get('password', '')
-        phone = request.data.get('phone', '')
         if username_post != '':
-            if not HotShotUser.objects.filter(username__exact=username_post):
-                return CustomResponse(code=100, msg='用户名不存在', data=None, status=status.HTTP_204_NO_CONTENT)
-            user = HotShotUser.objects.get(username__exact=username_post)
-            if user.check_password(password_post):
-                serializer = serializers.HotShotUserSerializer(user)
-                return CustomResponse(code=1, msg='login success', data=serializer.data, status=status.HTTP_200_OK)
-            return CustomResponse(code=101, msg='密码错误', status=status.HTTP_400_BAD_REQUEST)
-        if phone != '':
-            if not HotShotUser.objects.filter(phone__exact=phone):
-                return CustomResponse(code=102, msg='手机号不存在', data=None, status=status.HTTP_400_BAD_REQUEST)
-            user = HotShotUser.objects.get(phone__exact=phone)
-            if user.check_password(password_post):
-                serializer = serializers.HotShotUserSerializer(user)
-                return CustomResponse(code=1, msg='login success', data=serializer.data, status=status.HTTP_200_OK)
-            return CustomResponse(code=101, msg='密码错误', status=status.HTTP_400_BAD_REQUEST)
-        serializer = serializers.HotShotUserSerializer(data=request.data)
-        return CustomResponse(code=201, msg=serializer.errors, data=None, status=status.HTTP_400_BAD_REQUEST)
+            user = None
+            if HotShotUser.objects.filter(username__exact=username_post):
+                user = HotShotUser.objects.get(username__exact=username_post)
+            elif HotShotUser.objects.filter(phone__exact=username_post):
+                user = HotShotUser.objects.get(phone__exact=username_post)
+                # return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_204_NO_CONTENT)
+            if user:
+                if user.check_password(password_post):
+                    serializer = serializers.HotShotUserSerializer(user)
+                    return CustomResponse(code=1, msg='login success', data=serializer.data, status=status.HTTP_200_OK)
+                return CustomResponse(code=101, msg='密码错误', status=status.HTTP_400_BAD_REQUEST)
+            return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_204_NO_CONTENT)
+        return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_204_NO_CONTENT)
+        # if phone != '':
+        #     if not HotShotUser.objects.filter(phone__exact=phone):
+        #         return CustomResponse(code=102, msg='手机号不存在', data=None, status=status.HTTP_400_BAD_REQUEST)
+        #     user = HotShotUser.objects.get(phone__exact=phone)
+        #     if user.check_password(password_post):
+        #         serializer = serializers.HotShotUserSerializer(user)
+        #         return CustomResponse(code=1, msg='login success', data=serializer.data, status=status.HTTP_200_OK)
+        #     return CustomResponse(code=101, msg='密码错误', status=status.HTTP_400_BAD_REQUEST)
+        # serializer = serializers.HotShotUserSerializer(data=request.data)
+        # return CustomResponse(code=201, msg=serializer.errors, data=None, status=status.HTTP_400_BAD_REQUEST)
         # if ac == 'change':
         #     if verify_code == '' or phone == '':
         #         return CustomResponse(code=0, msg='verifyCode or phone empty', status=status.HTTP_400_BAD_REQUEST)
@@ -378,3 +384,23 @@ class UserFavoriteLSPView(APIView):
                 model.delete()
                 return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
             return CustomResponse(data=None, code=0, msg='未收藏相关视频', status=status.HTTP_204_NO_CONTENT)
+
+
+class OECommentView(APIView):
+    authentication_classes = (authentication.TokenAuthentication,)
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, format=None):
+        data = {'user': request.user.id, 'video': request.data.get('videoId'), 'content': request.data.get('content')}
+        serializer = OECommentSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return CustomResponse(data='', code=1, msg='success', status=status.HTTP_200_OK)
+        return CustomResponse(data=None, code=0, msg=serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class OECommentListView(APIView):
+    def get(self, request, format=None):
+        object = models.OECommentModel.objects.filter(video_id=request.GET.get('videoId'))
+        serializer = serializers.OECommentListSerializer(object, many=True)
+        return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)

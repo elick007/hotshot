@@ -65,4 +65,6 @@ urlpatterns_hotshot = [
     path('api/user/favorite/oe/', views.UserFavoriteOEView.as_view(), name='api/user/favorite/oe'),
     path('api/user/favorite/dy/', views.UserFavoriteDYView.as_view(), name='api/user/favorite/dy'),
     path('api/user/favorite/lsp/', views.UserFavoriteLSPView.as_view(), name='api/user/favorite/lsp'),
+    path('api/videos/oe/comment/', views.OECommentView.as_view(),name='api/videos/oe/comment'),
+    path('api/videos/oe/comment/list',views.OECommentListView.as_view(),name='api/videos/oe/comment'),
 ]

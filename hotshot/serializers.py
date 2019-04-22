@@ -5,7 +5,8 @@ from rest_framework.validators import UniqueValidator, UniqueTogetherValidator
 
 from hotshot.models import OpenEyesDailyVideo, OpenEyesHotVideo, HotShotUser, \
     UserFavoriteOEModel, \
-    DYHotVideoModel, SMSModel, UserFavoriteDYModel, UserFavoriteLSPModel, LSPHotVideoModel, PublicVideoModel
+    DYHotVideoModel, SMSModel, UserFavoriteDYModel, UserFavoriteLSPModel, LSPHotVideoModel, PublicVideoModel, \
+    OECommentModel
 
 
 class HotShotUserSerializer(serializers.ModelSerializer):
@@ -18,7 +19,7 @@ class HotShotUserSerializer(serializers.ModelSerializer):
 class HotShotUserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = HotShotUser
-        fields = ('username', 'phone', 'password','uid')
+        fields = ('username', 'phone', 'password', 'uid')
 
 
 class UploadAvatarSerializer(serializers.ModelSerializer):
@@ -45,7 +46,7 @@ class PublicVideoSerializer(serializers.ModelSerializer):
 
     def get_author(self, obj):
         if obj.author:
-            return {'username': obj.author.username, 'avatar': 'media/' + str(obj.author.avatar)}
+            return {'userName': obj.author.username, 'avatar': 'media/' + str(obj.author.avatar)}
         return None
 
     class Meta:
@@ -153,3 +154,22 @@ class UserFavoriteLSPListSerializer(serializers.ModelSerializer):
     class Meta:
         model = LSPHotVideoModel
         fields = ('id', 'video')
+
+
+class OECommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OECommentModel
+        fields = ('__all__')
+
+
+class OECommentListSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+
+    def get_user(self, obj):
+        if obj.user:
+            return {'userName': obj.user.username, 'avatar': 'media/' + str(obj.user.avatar)}
+
+    class Meta:
+        model=OECommentModel
+        fields = ('user', 'content')
+        depth = 1
