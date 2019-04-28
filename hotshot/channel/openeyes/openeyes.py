@@ -28,7 +28,7 @@ class OpenEyes:
                 srcData['description'] = data['description']
                 srcData['detail'] = cover['detail']
                 srcData['playUrl'] = data['playUrl']
-                srcData['type'] = 'hot'
+                srcData['type'] = 'oe'
                 self.insert_video(srcData)
 
     def get_hot_video(self):

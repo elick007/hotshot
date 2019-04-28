@@ -81,13 +81,13 @@ class UserLoginViews(APIView):
             elif HotShotUser.objects.filter(phone__exact=username_post):
                 user = HotShotUser.objects.get(phone__exact=username_post)
                 # return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_204_NO_CONTENT)
-            if user:
+            if user is not None:
                 if user.check_password(password_post):
                     serializer = serializers.HotShotUserSerializer(user)
                     return CustomResponse(code=1, msg='login success', data=serializer.data, status=status.HTTP_200_OK)
                 return CustomResponse(code=101, msg='密码错误', status=status.HTTP_400_BAD_REQUEST)
-            return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_204_NO_CONTENT)
-        return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_204_NO_CONTENT)
+            return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_404_NOT_FOUND)
+        return CustomResponse(code=100, msg='用户不存在', data=None, status=status.HTTP_404_NOT_FOUND)
         # if phone != '':
         #     if not HotShotUser.objects.filter(phone__exact=phone):
         #         return CustomResponse(code=102, msg='手机号不存在', data=None, status=status.HTTP_400_BAD_REQUEST)
@@ -143,8 +143,8 @@ class UserRegisterView(APIView):
                     user.set_password(request.data['password'])
                     uid = uuid.uuid1().int >> 108
                     HotShotUser.objects.filter(id=user.id).update(password=user.password, is_active=True, uid=uid)
-                    return CustomResponse(data=serializers.data, code=1, msg="success", status=status.HTTP_200_OK)
-                return CustomResponse(data=serializers.errors, code=201, msg='fail', status=status.HTTP_400_BAD_REQUEST)
+                    return CustomResponse(data=None, code=1, msg="register success", status=status.HTTP_200_OK)
+                return CustomResponse(data=None, code=201, msg=serializers.errors, status=status.HTTP_400_BAD_REQUEST)
             return CustomResponse(data=None, code=106, msg='verify invalid', status=status.HTTP_400_BAD_REQUEST)
         return CustomResponse(data=None, code=201, msg="param error", status=status.HTTP_400_BAD_REQUEST)
 
@@ -182,7 +182,8 @@ class AvatarUploadView(APIView):
             avatar_file_path = os.path.join(settings.MEDIA_ROOT, 'avatar/' + avatar_name)
             avatar.save(avatar_file_path)
             HotShotUser.objects.filter(id=request.user.id).update(avatar='avatar/' + avatar_name)
-            return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
+            user_serializer = HotShotUserSerializer(HotShotUser.objects.get(id=request.user.id))
+            return CustomResponse(data=user_serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
         return CustomResponse(data=serializers.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -224,7 +225,7 @@ class PublicVideoUploadView(APIView):
 
 
 class PublicVideoView(CustomReadOnlyViewSet):
-    queryset = PublicVideoModel.objects.order_by('-created')
+    queryset = PublicVideoModel.objects.order_by('-created')[:30]
     serializer_class = PublicVideoSerializer
 
 
@@ -286,7 +287,7 @@ class UserFavoriteOEView(APIView):
             serializer = UserFavoriteOEListSerializer(model, many=True)
             return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
         elif ac == "retrieve":
-            video_id = self.request.GET.get('video_id')
+            video_id = self.request.GET.get('videoId')
             model = UserFavoriteOEModel.objects.filter(uid=request.user.id, video_id=video_id)
             if model.exists():
                 serializer = UserFavoriteOEListSerializer(model, many=True)
@@ -298,7 +299,7 @@ class UserFavoriteOEView(APIView):
     def post(self, request, format=None):
         ac = self.request.GET.get('ac')
         if ac == 'add':
-            data = {'uid': request.user.id, 'video': request.data['video_id']}
+            data = {'uid': request.user.id, 'video': request.data.get('videoId')}
             serializer = UserFavoriteOESerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
@@ -306,7 +307,7 @@ class UserFavoriteOEView(APIView):
             return CustomResponse(data=serializer.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
         elif ac == 'del':
             model = UserFavoriteOEModel.objects.filter(uid=request.user.id,
-                                                       video_id=self.request.data.get('video_id'))
+                                                       video_id=self.request.data.get('videoId'))
             if model.exists():
                 model.delete()
                 return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
@@ -324,7 +325,7 @@ class UserFavoriteDYView(APIView):
             serializer = UserFavoriteDYListSerializer(model, many=True)
             return CustomResponse(data=serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
         elif ac == "retrieve":
-            video_id = self.request.GET.get('video_id')
+            video_id = self.request.GET.get('videoId')
             model = UserFavoriteDYModel.objects.filter(uid=request.user.id, video_id=video_id)
             if model.exists():
                 serializer = UserFavoriteDYListSerializer(model, many=True)
@@ -336,7 +337,7 @@ class UserFavoriteDYView(APIView):
     def post(self, request, format=None):
         ac = self.request.GET.get('ac')
         if ac == 'add':
-            data = {'uid': request.user.id, 'video': request.data['video_id']}
+            data = {'uid': request.user.id, 'video': request.data['videoId']}
             serializer = UserFavoriteDYSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
@@ -344,7 +345,7 @@ class UserFavoriteDYView(APIView):
             return CustomResponse(data=serializer.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
         elif ac == 'del':
             model = UserFavoriteDYModel.objects.filter(uid=request.user.id,
-                                                       video_id=self.request.data.get('video_id'))
+                                                       video_id=self.request.data.get('videoId'))
             if model.exists():
                 model.delete()
                 return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)
@@ -371,7 +372,7 @@ class UserFavoriteLSPView(APIView):
     def post(self, request, format=None):
         ac = self.request.GET.get('ac')
         if ac == 'add':
-            data = {'uid': request.user.id, 'video': request.data['video_id']}
+            data = {'uid': request.user.id, 'video': request.data['videoId']}
             serializer = UserFavoriteLSPSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
@@ -379,7 +380,7 @@ class UserFavoriteLSPView(APIView):
             return CustomResponse(data=serializer.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
         elif ac == 'del':
             model = UserFavoriteLSPModel.objects.filter(uid=request.user.id,
-                                                        video_id=self.request.data.get('video_id'))
+                                                        video_id=self.request.data.get('videoId'))
             if model.exists():
                 model.delete()
                 return CustomResponse(data=None, code=1, msg='success', status=status.HTTP_200_OK)

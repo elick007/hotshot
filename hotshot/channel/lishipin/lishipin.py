@@ -41,7 +41,7 @@ class LiShiPin:
             date = content['pubTime']
             timeArray = time.strptime(date, "%Y-%m-%d %H:%M")
             data['date'] = str(int(time.mktime(timeArray)) * 1000)
-            data['type'] = 'hot'
+            data['type'] = 'lsp'
             userInfo = content['userInfo']
             data['author'] = userInfo['nickname']
             videos = content['videos']

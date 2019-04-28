@@ -38,7 +38,7 @@ class Douyin:
                     data['description'] = aweme_info['desc']
                     data['cover'] = cover_url_list[0]
                     data['playUrl'] = video_url_list[0].replace('https://', 'http://')
-                    data['type'] = 'hot'
+                    data['type'] = 'dy'
                     data['date'] = aweme_info['create_time']
                     self.insert_video(data)
 

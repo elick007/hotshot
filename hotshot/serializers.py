@@ -46,12 +46,12 @@ class PublicVideoSerializer(serializers.ModelSerializer):
 
     def get_author(self, obj):
         if obj.author:
-            return {'userName': obj.author.username, 'avatar': 'media/' + str(obj.author.avatar)}
+            return {'userName': obj.author.username, 'avatar': '/media/' + str(obj.author.avatar)}
         return None
 
     class Meta:
         model = PublicVideoModel
-        fields = ('content', 'cover', 'playUrl', 'author')
+        fields = ('content', 'cover', 'playUrl', 'author','created')
         depth = 1
 
 
@@ -167,7 +167,7 @@ class OECommentListSerializer(serializers.ModelSerializer):
 
     def get_user(self, obj):
         if obj.user:
-            return {'userName': obj.user.username, 'avatar': 'media/' + str(obj.user.avatar)}
+            return {'userName': obj.user.username, 'avatar': '/media/' + str(obj.user.avatar)}
 
     class Meta:
         model=OECommentModel
