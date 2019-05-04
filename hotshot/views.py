@@ -177,11 +177,15 @@ class AvatarUploadView(APIView):
         if serializers.is_valid():
             suffix = request.data.get('suffix').split('.')[1]
             user = HotShotUser.objects.get(username__exact=request.user.username)
-            avatar_name = user.uid + "." + suffix
             avatar = Image.open(request.data['avatar'])
-            avatar_file_path = os.path.join(settings.MEDIA_ROOT, 'avatar/' + avatar_name)
+            user_avatar_path = os.path.join(settings.MEDIA_ROOT, 'avatar/' + user.uid)
+            if os.path.exists(user_avatar_path):
+                os.rmdir(user_avatar_path)
+            else:
+                os.mkdir(user_avatar_path)
+            avatar_file_path = os.path.join(user_avatar_path, str(int(time.time())) + '.' + suffix)
             avatar.save(avatar_file_path)
-            HotShotUser.objects.filter(id=request.user.id).update(avatar='avatar/' + avatar_name)
+            HotShotUser.objects.filter(id=request.user.id).update(avatar=avatar_file_path)
             user_serializer = HotShotUserSerializer(HotShotUser.objects.get(id=request.user.id))
             return CustomResponse(data=user_serializer.data, code=1, msg='success', status=status.HTTP_200_OK)
         return CustomResponse(data=serializers.errors, code=0, msg='fail', status=status.HTTP_400_BAD_REQUEST)
