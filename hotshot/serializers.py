@@ -76,14 +76,13 @@ class OpenEyesDailyVideoSerializer(serializers.ModelSerializer):
 class OpenEyesHotVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = OpenEyesHotVideo
-        fields = ('id', 'created', 'type', 'date', 'duration', 'title', 'description', 'cover', 'playUrl')
+        fields = '__all__'
 
 
 class DYHotVideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DYHotVideoModel
-        fields = (
-            'id', 'created', 'type', 'date', 'duration', 'author', 'view', 'description', 'cover', 'playUrl', 'author')
+        fields = '__all__'
 
 
 class LSPHotVideoSerializer(serializers.ModelSerializer):
@@ -149,7 +148,7 @@ class UserFavoriteLSPSerializer(serializers.ModelSerializer):
 
 
 class UserFavoriteLSPListSerializer(serializers.ModelSerializer):
-    video = LSPHotVideoSerializer
+    video = LSPHotVideoSerializer()
 
     class Meta:
         model = LSPHotVideoModel

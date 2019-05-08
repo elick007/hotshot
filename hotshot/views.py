@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 import uuid
 
@@ -178,13 +179,17 @@ class AvatarUploadView(APIView):
             suffix = request.data.get('suffix').split('.')[1]
             user = HotShotUser.objects.get(username__exact=request.user.username)
             avatar = Image.open(request.data['avatar'])
-            user_avatar_path = os.path.join(settings.MEDIA_ROOT, 'avatar/' + user.uid)
+            user_avatar_path = os.path.join(settings.MEDIA_ROOT, 'avatar/' + user.uid).replace('\\', '/')
             if os.path.exists(user_avatar_path):
-                os.rmdir(user_avatar_path)
-            else:
+                print('path exist')
+                shutil.rmtree(user_avatar_path)
                 os.mkdir(user_avatar_path)
-            avatar_file_path = os.path.join(user_avatar_path, str(int(time.time())) + '.' + suffix)
-            avatar.save(avatar_file_path)
+            else:
+                print('path not exist')
+                os.mkdir(user_avatar_path)
+            avatar_file_path = os.path.join(user_avatar_path, str(int(time.time())) + '.' + suffix).replace('\\', '/')
+            print('avatar path='+avatar_file_path)
+            avatar.save(avatar_file_path.replace('/','\\'))
             HotShotUser.objects.filter(id=request.user.id).update(avatar=avatar_file_path)
             user_serializer = HotShotUserSerializer(HotShotUser.objects.get(id=request.user.id))
             return CustomResponse(data=user_serializer.data, code=1, msg='success', status=status.HTTP_200_OK)

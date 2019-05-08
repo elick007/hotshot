@@ -62,6 +62,7 @@ class OpenEyesHotVideo(models.Model):
     description = models.TextField(blank=True, default='')
     cover = models.TextField(default='')
     playUrl = models.TextField(default='')
+    author = models.CharField(max_length=100, default='')
 
     class Meta:
         ordering = ('created',)
@@ -75,6 +76,7 @@ class DYHotVideoModel(models.Model):
     duration = models.CharField(max_length=100, default='')  # 视频长度
     author = models.CharField(max_length=100, default='')
     view = models.CharField(max_length=100, default='')
+    title = models.CharField(max_length=100, blank=True, default='')
     description = models.TextField(blank=True, default='')
     cover = models.TextField(default='')
     playUrl = models.TextField(default='')

@@ -31,15 +31,17 @@ class Douyin:
                     video_url_list = play_addr['url_list']
                     cover = video['cover']
                     cover_url_list = cover['url_list']
-
+                    duration = aweme_info['music']['duration']
                     data = {}
                     data['author'] = author['nickname']
                     data['view'] = statistics['play_count']
                     data['description'] = aweme_info['desc']
+                    data['title'] = aweme_info['desc']
                     data['cover'] = cover_url_list[0]
                     data['playUrl'] = video_url_list[0].replace('https://', 'http://')
                     data['type'] = 'dy'
                     data['date'] = aweme_info['create_time']
+                    data['duration'] = duration
                     self.insert_video(data)
 
     def insert_video(self, data=None):
@@ -47,7 +49,8 @@ class Douyin:
                                                  defaults={'author': data['author'], 'view': data['view'],
                                                            'description': data['description'],
                                                            'cover': data['cover'], 'type': data['type'],
-                                                           'date': data['date']})
+                                                           'date': data['date'], 'title': data['title'],
+                                                           'duration': data['duration']})
 
     def get_positive_video(self):
         response = fetch(douyin_positive_video_url, headers=header)
@@ -84,4 +87,3 @@ class Douyin:
 if __name__ == '__main__':
     douyin = Douyin()
     douyin.get_hot_video()
-

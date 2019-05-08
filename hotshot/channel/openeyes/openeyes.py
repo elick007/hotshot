@@ -29,6 +29,7 @@ class OpenEyes:
                 srcData['detail'] = cover['detail']
                 srcData['playUrl'] = data['playUrl']
                 srcData['type'] = 'oe'
+                srcData['author'] = data['author']['name']
                 self.insert_video(srcData)
 
     def get_hot_video(self):
@@ -49,7 +50,8 @@ class OpenEyes:
                 srcData['playUrl'] = data['playUrl']
                 srcData['duration'] = data['duration']
                 srcData['date'] = data['date']
-                srcData['type'] = 'hot'
+                srcData['type'] = 'oe'
+                srcData['author']=data['author']['name']
                 self.insert_video(srcData)
 
     def insert_video(self, data=None):
@@ -59,7 +61,8 @@ class OpenEyes:
                                                                                      'cover': data['detail'],
                                                                                      'duration': data['duration'],
                                                                                      'date': data['date'],
-                                                                                     'type': data['type']})
+                                                                                     'type': data['type'],
+                                                                                     'author': data['author']})
 
     def deleteVideo(self):
         OpenEyesDailyVideo.objects.filter().delete()
